@@ -1,1 +1,0 @@
-# gastos-convivencia-g-a
