@@ -194,9 +194,9 @@
         document.getElementById('aurora-total').textContent = `Aurora: ${k2.toFixed(2)} €`;
         const diff = Math.abs(j2 - k2).toFixed(2);
         if (j2 > k2) {
-          document.getElementById('balance').textContent = `Guillem deu ${diff} € a Aurora`;
+          document.getElementById('balance').textContent = `Aurora deu ${diff/2} € a Guillem`;
         } else if (k2 > j2) {
-          document.getElementById('balance').textContent = `Aurora deu ${diff} € a Guillem`;
+          document.getElementById('balance').textContent = `Guillem deu ${diff/2} € a Aurora`;
         } else {
           document.getElementById('balance').textContent = 'Estan a zero de saldo';
         }
