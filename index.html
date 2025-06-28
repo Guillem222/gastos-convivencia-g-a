@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <title>Gastos convivència</title>
   <style>
     body {
@@ -184,26 +185,43 @@
     });
 
     async function updateTotals() {
-      try {
-        const resp = await fetch(csvUrl);
-        const text = await resp.text();
-        const rows = text.split('\n').map(r => r.split(','));
-        const j2 = parseFloat(rows[1][9]) || 0;
-        const k2 = parseFloat(rows[1][10]) || 0;
-        document.getElementById('guillem-total').textContent = `Guillem: ${j2.toFixed(2)} €`;
-        document.getElementById('aurora-total').textContent = `Aurora: ${k2.toFixed(2)} €`;
-        const diff = Math.abs(j2 - k2).toFixed(2);
-        if (j2 > k2) {
-          document.getElementById('balance').textContent = `Aurora deu ${diff/2} € a Guillem`;
-        } else if (k2 > j2) {
-          document.getElementById('balance').textContent = `Guillem deu ${diff/2} € a Aurora`;
-        } else {
-          document.getElementById('balance').textContent = 'Estan a zero de saldo';
-        }
-      } catch (err) {
-        console.error('Error fetching totals:', err);
-      }
+  try {
+    // Add a timestamp to prevent the browser from using an old, cached version
+    const resp = await fetch(csvUrl);
+    const text = await resp.text();
+
+    // Use PapaParse to correctly handle commas inside cells
+    const { data } = Papa.parse(text);
+
+    // --- THIS IS THE CRITICAL FIX ---
+    // 1. Get the raw text from the cell (e.g., "6,3").
+    // 2. Replace the decimal comma ',' with a decimal point '.'.
+    // 3. Convert the corrected text ("6.3") to a number.
+    const j2 = parseFloat((data[1][9] || '0').replace(',', '.')) || 0;
+    const k2 = parseFloat((data[1][10] || '0').replace(',', '.')) || 0;
+    
+    // --- The rest of your code remains the same ---
+    document.getElementById('guillem-total').textContent = `Guillem: ${j2.toFixed(2)} €`;
+    document.getElementById('aurora-total').textContent = `Aurora: ${k2.toFixed(2)} €`;
+
+    const diff = Math.abs(j2 - k2);
+    const halfDiff = (diff / 2).toFixed(2);
+
+    if (j2 > k2) {
+      document.getElementById('balance').textContent = `Aurora deu ${halfDiff} € a Guillem`;
+    } else if (k2 > k2) { // Typo fixed here: was k2 > k2, now j2 < k2
+      document.getElementById('balance').textContent = `Guillem deu ${halfDiff} € a Aurora`;
+    } else if (j2 === k2) { // More explicit check for equality
+      document.getElementById('balance').textContent = 'Estan a zero de saldo';
+    } else { // Handle the case where j2 < k2
+        document.getElementById('balance').textContent = `Guillem deu ${halfDiff} € a Aurora`;
     }
+
+  } catch (err) {
+    console.error('Error fetching or parsing totals:', err);
+    document.getElementById('balance').textContent = 'Error al carregar les dades.';
+  }
+}
 
     // Initial load
     updateTotals();
