@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gastos convivència</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .person-selector {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1rem;
+    }
+    .person-selector label {
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+    }
+    .person-selector input[type="checkbox"] {
+      width: 1.2rem;
+      height: 1.2rem;
+      margin-right: 0.5rem;
+    }
+    form {
+      max-width: 400px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      font-size: 0.9rem;
+    }
+    input, select {
+      padding: 0.6rem;
+      border: 1px solid #333;
+      border-radius: 4px;
+      background-color: #1e1e1e;
+      color: #e0e0e0;
+      font-size: 1rem;
+      margin-top: 0.2rem;
+    }
+    button {
+      padding: 0.8rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .totals {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 1.2rem;
+      line-height: 1.5;
+    }
+    .totals .amount {
+      font-size: 2rem;
+      font-weight: bold;
+      margin: 0.5rem 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gastos convivència</h1>
+  <div class="person-selector">
+    <label>
+      <input type="checkbox" id="aurora" name="person" /> Aurora
+    </label>
+    <label>
+      <input type="checkbox" id="guillem" name="person" /> Guillem
+    </label>
+  </div>
+  <form id="expense-form">
+    <label>
+      Import (€):
+      <input type="number" step="0.01" id="amount" required />
+    </label>
+    <label>
+      Data:
+      <input type="date" id="date" required />
+    </label>
+    <label>
+      Motiu:
+      <input type="text" id="reason" placeholder="Ex: Compra, gasolina..." required />
+    </label>
+    <label>
+      Clau API:
+      <input type="text" id="api-key" placeholder="API Key" required />
+    </label>
+    <button type="submit">Registra</button>
+  </form>
+
+  <div class="totals" id="totals">
+    <p class="amount" id="guillem-total">Guillem: 0 €</p>
+    <p class="amount" id="aurora-total">Aurora: 0 €</p>
+    <p class="amount" id="balance">...</p>
+  </div>
+
+  <script>
+    // Exclusivity for checkboxes
+    const auroraCheckbox = document.getElementById('aurora');
+    const guillemCheckbox = document.getElementById('guillem');
+    [auroraCheckbox, guillemCheckbox].forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) {
+          [auroraCheckbox, guillemCheckbox].forEach(other => {
+            if (other !== cb) other.checked = false;
+          });
+        }
+      });
+    });
+
+    // Prefill date with today
+    const dateInput = document.getElementById('date');
+    dateInput.valueAsDate = new Date();
+
+    const form = document.getElementById('expense-form');
+    const sheetId = '12wkoiHuApa0XyhHn31IXTkEe6WiTOVWwyQKvQeoAj3k';
+    const gid = '0';
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const person = auroraCheckbox.checked ? 'Aurora' : (guillemCheckbox.checked ? 'Guillem' : null);
+      if (!person) {
+        alert('Seleccioneu qui ha fet la compra');
+        return;
+      }
+      const amount = parseFloat(document.getElementById('amount').value);
+      const date = document.getElementById('date').value;
+      const reason = document.getElementById('reason').value;
+      const apiKey = document.getElementById('api-key').value;
+
+      // Post to Apps Script endpoint
+      const endpoint = 'https://script.google.com/macros/s/AKfycbxPbxzLKufu4noPhvd7CIcPzPcEh_dNiSpeD_QmQ8otvDPurflGGxxhek9XftrNVj8sQA/exec';
+      const payload = { person, amount, date, reason, apiKey };
+      
+
+        fetch(endpoint, {
+                    method: 'POST',
+                    mode: "no-cors",
+                    body: JSON.stringify(payload),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+        .then(() => {
+            alert("Enviat!");
+        })
+        .catch(() => {
+            alert("Error al enviar!");
+        })
+        .finally(() => {
+            updateTotals();
+        });
+
+
+
+
+
+
+
+
+    });
+
+    async function updateTotals() {
+      try {
+        const resp = await fetch(csvUrl);
+        const text = await resp.text();
+        const rows = text.split('\n').map(r => r.split(','));
+        const j2 = parseFloat(rows[1][9]) || 0;
+        const k2 = parseFloat(rows[1][10]) || 0;
+        document.getElementById('guillem-total').textContent = `Guillem: ${j2.toFixed(2)} €`;
+        document.getElementById('aurora-total').textContent = `Aurora: ${k2.toFixed(2)} €`;
+        const diff = Math.abs(j2 - k2).toFixed(2);
+        if (j2 > k2) {
+          document.getElementById('balance').textContent = `Aurora deu ${diff} € a Guillem`;
+        } else if (k2 > j2) {
+          document.getElementById('balance').textContent = `Guillem deu ${diff} € a Aurora`;
+        } else {
+          document.getElementById('balance').textContent = 'Estan a zero de saldo';
+        }
+      } catch (err) {
+        console.error('Error fetching totals:', err);
+      }
+    }
+
+    // Initial load
+    updateTotals();
+  </script>
+</body>
+</html>
